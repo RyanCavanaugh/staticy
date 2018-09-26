@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "rootDir": "src",
+    "outDir": "lib",
+    "composite": true,
+    "strict": true,
+    "esModuleInterop": true
+  },
+  "include": [
+    "src/*.ts"
+  ]
+}
