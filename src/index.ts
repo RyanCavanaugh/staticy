@@ -3,15 +3,26 @@ import path = require('path');
 import fs = require('fs');
 import minimatch = require('minimatch');
 import mime = require('mime-types');
+// import ws = require('ws');
 
 namespace staticyServer {
     export interface GlobalOptions {
         disableLiveReload: boolean;
     }
+
     export interface AddFolderOptions {
         recursive: boolean;
         filePattern: string | string[];
         extensionMap: { [key: string]: string };
+    }
+
+    export interface GenerationContext {
+        triggerReload(): void;
+        watchFileForReload(path: string): void;
+    }
+
+    export interface FileGenerationContext extends GenerationContext {
+
     }
 }
 
@@ -20,6 +31,10 @@ const defaultOpts: staticyServer.AddFolderOptions = {
     filePattern: "*",
     extensionMap: {}
 };
+
+function injectLivereloadScript(htmlContent: string): string {
+    return htmlContent.replace("</body>", `<script src="/__staticy-reload.js"></script></body>`);
+}
 
 function flattenFolderOpts(opts?: Partial<staticyServer.AddFolderOptions>): staticyServer.AddFolderOptions {
     if (!opts) return defaultOpts;
@@ -30,6 +45,7 @@ function isPromise(x: any): x is Promise<unknown> {
     return x instanceof Function;
 }
 
+let port = 4213;
 function staticyServer() {
     const handlers: Array<(req: express.Request, res: express.Response) => Promise<boolean>> = [];
 
@@ -53,10 +69,12 @@ function staticyServer() {
     middleware.addStaticFolder = function (fileSystemPath: string, serverPath: string, opts?: Partial<staticyServer.AddFolderOptions>) {
         this.addTransformedFolder(fileSystemPath, serverPath, data => data, opts);
     };
+
     middleware.addStaticFile = function (fileSystemPath: string, serverFileName: string) {
 
     };
-    middleware.addTransformedFolder = function (fileSystemPath: string, serverPath: string, transform: (content: string, fileName: string) => string, opts?: Partial<staticyServer.AddFolderOptions>) {
+
+    middleware.addTransformedFolder = function (fileSystemPath: string, serverPath: string, transform: (content: string, fileName: string) => (string | Promise<string>), opts?: Partial<staticyServer.AddFolderOptions>) {
         const options = flattenFolderOpts(opts);
         const patterns = Array.isArray(options.filePattern) ? options.filePattern : [options.filePattern];
         handlers.unshift(async (req, res) => {
@@ -67,9 +85,9 @@ function staticyServer() {
                 const diskPath = path.join(fileSystemPath, relativePath);
                 const realDiskPath = diskPath.substr(0, diskPath.length - nominalExt.length) + newExt;
                 if (patterns.some(p => minimatch(path.basename(realDiskPath), p))) {
-                    fs.readFile(realDiskPath, { encoding: "utf-8" }, (err, content) => {
+                    fs.readFile(realDiskPath, { encoding: "utf-8" }, async (err, content) => {
                         if (err) throw err;
-                        const transformed = transform(content, realDiskPath);
+                        const transformed = await transform(content, realDiskPath);
                         res.header("Cache-Control", "no-cache");
                         res.header("Content-Type", mime.lookup(relativePath) || "unknown");
                         res.send(transformed);
@@ -82,6 +100,7 @@ function staticyServer() {
             return false;
         });
     };
+
     middleware.addTransformedFile = function (fileSystemPath: string, serverPath: string, transform: (content: string, fileName: string) => string, filePattern?: string) {
 
     };
@@ -89,6 +108,26 @@ function staticyServer() {
     middleware.addGeneratedFile = function (serverFileName: string, generate: (fileName: string, triggerReload: () => void) => string) {
 
     };
+
+
+    startServer(port);
+    port++;
+
+    function startServer(port: number) {
+        /*
+        const wss = new ws.Server({ port });
+        const listeners = [];
+        wss.on("connection", function (conn) {
+            var trigger = function () {
+                conn.send("1");
+            };
+            listeners.push(trigger);
+            conn.on("close", function (closed) {
+                listeners.splice(listeners.indexOf(trigger), 1);
+            });
+        });
+        */
+    }
 
     return middleware;
 }
