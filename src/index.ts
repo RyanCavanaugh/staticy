@@ -1,16 +1,19 @@
 import express = require('express');
-import path = require('path');
-import fs = require('fs');
+import _path = require('path');
+import fs = require('fs-extra');
 import minimatch = require('minimatch');
 import mime = require('mime-types');
 import ws = require('ws');
 import chokidar = require('chokidar');
 import string_decoder = require('string_decoder');
+import glob = require('glob');
 
+const path = _path.posix;
 const utf8 = new string_decoder.StringDecoder("utf8");
 
 const ws_port = 7772;
 const watchOpts: chokidar.WatchOptions = {
+    ignoreInitial: true,
     awaitWriteFinish: {
         stabilityThreshold: 200,
         pollInterval: 20
@@ -41,17 +44,30 @@ function isPromise(x: any): x is Promise<unknown> {
     return x instanceof Function;
 }
 
-function staticyServer(globalOptions: Partial<staticyServer.GlobalOptions>) {
+type ServerPathEntry = {
+    serverPath: string;
+    mimeType: string;
+    generate: () => Promise<Buffer | string>;
+    sourceFiles: string[];
+    description: string;
+}
+
+function staticyServer(globalOptions?: Partial<staticyServer.GlobalOptions>) {
     const globalOpts = flattenGlobalOpts(globalOptions);
-    const handlers: Array<(req: express.Request, res: express.Response) => Promise<boolean>> = [];
+    const serverFileList: ServerPathEntry[] = [];
 
-    // const serverFileList: Array<[string, ]>
-
-    const singleFileWatcher = chokidar.watch("");
-    singleFileWatcher.on("all", (_, path) => triggerFileChanged(path));
+    const singleFileWatcher = chokidar.watch("", watchOpts);
+    singleFileWatcher.on("all", (event, path) => triggerFileChanged(event, path));
 
     function filePathToServerPaths(filePath: string): string[] {
-        return [];
+        const normalized = path.normalize(filePath);
+        const result: string[] = [];
+        for (const entry of serverFileList) {
+            if (entry.sourceFiles.some(f => path.normalize(f) === filePath)) {
+                result.push(entry.serverPath);
+            }
+        }
+        return result;
     }
 
     function middleware(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -67,13 +83,24 @@ function staticyServer(globalOptions: Partial<staticyServer.GlobalOptions>) {
         }
 
         async function process() {
-            for (const h of handlers) {
+            const provider = serverFileList.filter(s => s.serverPath === req.path)[0];
+            if (provider) {
+                startReloadServer();
+
+                res.header("Cache-Control", "no-cache");
                 try {
-                    const result = await h(req, res);
-                    if (result) return;
-                } catch (err) {
-                    return next(err);
+                    const content = await provider.generate();
+                    console.log('mime' + provider.mimeType);
+                    res.contentType(provider.mimeType);
+                    res.send(content);
+                    res.end();
+                } catch (e) {
+                    console.error(e);
+                    res.status(500);
+                    res.send(`<html><head><title>Staticy 500</title></head><body><pre>${e.toString()}</pre>`);
+                    res.end();
                 }
+                return;
             }
 
             next();
@@ -88,73 +115,71 @@ function staticyServer(globalOptions: Partial<staticyServer.GlobalOptions>) {
     middleware.addStaticFile = function (fileSystemPath: string, serverPath: string) {
         console.log(`Add file watch for ${fileSystemPath}`);
         singleFileWatcher.add(fileSystemPath);
+        
+        if (serverFileList.some(e => e.serverPath === serverPath)) {
+            throw new Error(`Server file list already contains path ${serverPath}`);
+        }
 
-        handlers.unshift(async (req, res) => {
-            if (req.path === serverPath) {
-                fs.readFile(fileSystemPath, (err, buffer) => {
-                    if (err) {
-                        res.status(500);
-                        res.send(`Static file ${fileSystemPath} does not exist`);
-                        return true;
-                    }
-
-                    res.header("Cache-Control", "no-cache");
-                    const mimeType = mime.lookup(fileSystemPath) || "unknown";
-                    res.header("Content-Type", mimeType);
-                    if (mimeType === "text/html" && !globalOpts.disableLiveReload) {
-                        res.send(staticyServer.injectReloadScript(utf8.end(buffer)));
-                    } else {
-                        res.send(buffer);
-                    }
-                    res.end();
-                });
-                return true;
+        const mimeType = globalOpts.mimeTypeProvider(fileSystemPath);
+        serverFileList.push({
+            serverPath,
+            mimeType,
+            description: `Static file ${fileSystemPath}`,
+            sourceFiles: [fileSystemPath],
+            generate: async () => {
+                if (mimeType === "text/html" && !globalOpts.disableLiveReload) {
+                    const html = await fs.readFile(fileSystemPath, { encoding: 'utf-8' });
+                    if (typeof html !== 'string') throw new Error("Wrong type of html");
+                    return staticyServer.injectReloadScript(html);
+                } else {
+                    return fs.readFile(fileSystemPath);
+                }    
             }
-            return false;
         });
     };
 
     middleware.addTransformedFolder = function (fileSystemPath: string, serverPath: string, transform: (content: string, fileName: string) => (string | Promise<string>), opts?: Partial<staticyServer.AddFolderOptions>) {
         const options = flattenFolderOpts(opts);
-        const folderWatcher = chokidar.watch(fileSystemPath, { ...defaultOpts, depth: options.recursive ? 10 : 0 });
-        folderWatcher.on("all", (event: unknown, path: string) => {
-            triggerFileChanged(path);
+        const folderWatcher = chokidar.watch(fileSystemPath, { ...watchOpts, depth: options.recursive ? 10 : 0 });
+        folderWatcher.on("all", (event: string, path: string) => {
+            triggerFileChanged(event, path);
         });
         folderWatcher.on("add", () => {
             recomputeFolderContents();
         });
 
+        function recomputeFolderContents() {
 
+        }
 
         const patterns = Array.isArray(options.filePattern) ? options.filePattern : [options.filePattern];
-        handlers.unshift(async (req, res) => {
-            if (req.path.indexOf(serverPath) === 0) {
-                const relativePath = path.relative(serverPath, req.path);
-                const nominalExt = path.extname(relativePath);
-                const newExt = options.extensionMap[nominalExt] || nominalExt;
-                const diskPath = path.join(fileSystemPath, relativePath);
-                const realDiskPath = diskPath.substr(0, diskPath.length - nominalExt.length) + newExt;
-                const realServerPath = path.join(serverPath, relativePath);
-                if (patterns.some(p => minimatch(path.basename(realDiskPath), p))) {
-                    if (fs.existsSync(realDiskPath)) {
-                        fs.readFile(realDiskPath, { encoding: "utf-8" }, async (err, content) => {
-                            console.log(`Add file watch for ${realDiskPath}`);
-                            chokidar.watch(realDiskPath, watchOpts).on('change', () => {
-                                broadcastUrlChanged(realServerPath);
-                            });
-                            if (err) throw err;
-                            const transformed = await transform(content, realDiskPath);
-                            res.header("Cache-Control", "no-cache");
-                            res.header("Content-Type", mime.lookup(relativePath) || "unknown");
-                            res.send(transformed);
-                            res.end();
-                        });
-                        return true;
+
+        fs.readdir(fileSystemPath, (err, fileList) => {
+            if (err) throw err;
+
+            for (const fileName of fileList) {
+                if (patterns.some(p => minimatch(fileName, p))) {
+                    const fullDiskPath = path.join(fileSystemPath, fileName);
+                    const relativeDiskPath = path.relative(fileSystemPath, fullDiskPath);
+                    let fullServerPath = path.join(serverPath, relativeDiskPath);
+                    const extension = path.extname(fullDiskPath);
+                    if (options.extensionMap[extension]) {
+                        fullServerPath = fullServerPath.substr(0, fullServerPath.length - extension.length) + options.extensionMap[extension];
                     }
+                    const mimeType = globalOpts.mimeTypeProvider(options.extensionMap[extension] || extension);
+                    serverFileList.push({
+                        serverPath: fullServerPath,
+                        mimeType,
+                        description: `Transformed file ${path.relative(process.cwd(), fullDiskPath)}`,
+                        sourceFiles: [fullDiskPath],
+                        generate: async () => {
+                            const content = await fs.readFile(fullDiskPath, { encoding: "utf-8" });
+                            const transformedContent = await transform(content as string, fileName);
+                            return transformedContent;
+                        }
+                    })
                 }
             }
-
-            return false;
         });
     };
 
@@ -166,11 +191,25 @@ function staticyServer(globalOptions: Partial<staticyServer.GlobalOptions>) {
 
     };
 
-    startReloadServer();
+    middleware.ls = function() {
+        console.log(`== File Listing ==`);
+        for (const f of serverFileList) {
+            console.log(`http://site${f.serverPath} - ${f.description} - served as ${f.mimeType}`);
+            for (const sf of f.sourceFiles) {
+                console.log(` - Source file ${sf}`);
+            }
+        }
+        console.log(`== (end) ==`);
+    };
 
     const listeners: ws[] = [];
+    let serverStarted = false;
     function startReloadServer() {
+        if (serverStarted) return;
+        serverStarted = true;
+
         const wss = new ws.Server({ port: ws_port });
+        console.log(`Reload server listening on ${ws_port}`);
         wss.on("connection", function (conn) {
             console.log("Accepted a listener connection");
             listeners.push(conn);
@@ -181,8 +220,13 @@ function staticyServer(globalOptions: Partial<staticyServer.GlobalOptions>) {
         });
     }
 
-    function triggerFileChanged(path: string) {
-        for (const url of filePathToServerPaths(path)) {
+    function triggerFileChanged(event: string | symbol, rawPath: string) {
+        if (typeof event === "symbol" || event === "ready") return;
+
+        const normalizedPath = path.normalize(rawPath);
+        console.log(`Path ${normalizedPath} changed (${event}); triggering reloads`);
+        for (const url of filePathToServerPaths(normalizedPath)) {
+            // console.log(` -> ${url}`);
             broadcastUrlChanged(url);
         }
     }

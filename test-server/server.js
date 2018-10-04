@@ -20,5 +20,6 @@ staticy.addTransformedFolder(css, "/", (content) => {
 const server = express();
 server.use(staticy);
 const port = 8233;
-server.listen(port);
 console.log(`Test server running at http://localhost:${port}`);
+setTimeout(() => staticy.ls(), 600);
+server.listen(port);
