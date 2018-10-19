@@ -25,8 +25,10 @@ const defaultOpts: staticyServer.AddFolderOptions = {
     filePattern: "*",
     extensionMap: {}
 };
+
 const defaultGlobalOpts: staticyServer.GlobalOptions = {
     disableLiveReload: false,
+    trace: false,
     mimeTypeProvider: (fileName: string) => (mime.lookup(fileName) || "unknown")
 };
 
@@ -60,10 +62,10 @@ function staticyServer(globalOptions?: Partial<staticyServer.GlobalOptions>) {
     singleFileWatcher.on("all", (event, path) => triggerFileChanged(event, path));
 
     function filePathToServerPaths(filePath: string): string[] {
-        const normalized = path.normalize(filePath);
+        const normalized = normalizePath(filePath);
         const result: string[] = [];
         for (const entry of serverFileList) {
-            if (entry.sourceFiles.some(f => path.normalize(f) === filePath)) {
+            if (entry.sourceFiles.some(f => normalizePath(f) === normalized)) {
                 result.push(entry.serverPath);
             }
         }
@@ -71,7 +73,6 @@ function staticyServer(globalOptions?: Partial<staticyServer.GlobalOptions>) {
     }
 
     function middleware(req: express.Request, res: express.Response, next: express.NextFunction) {
-        console.log(req.path);
         if (req.path === "/__staticy-reload.js") {
             fs.readFile(path.join(__dirname, "__staticy-reload.js"), { encoding: "utf-8" }, (err, data) => {
                 res.contentType("js");
@@ -85,35 +86,30 @@ function staticyServer(globalOptions?: Partial<staticyServer.GlobalOptions>) {
         async function process() {
             const provider = serverFileList.filter(s => s.serverPath === req.path)[0];
             if (provider) {
-                startReloadServer();
+                startReloadServerIfNeeded();
 
                 res.header("Cache-Control", "no-cache");
                 try {
                     const content = await provider.generate();
-                    console.log('mime' + provider.mimeType);
                     res.contentType(provider.mimeType);
                     res.send(content);
                     res.end();
                 } catch (e) {
-                    console.error(e);
                     res.status(500);
                     res.send(`<html><head><title>Staticy 500</title></head><body><pre>${e.toString()}</pre>`);
                     res.end();
                 }
-                return;
+            } else {
+                next();
             }
-
-            next();
         }
     }
 
     middleware.addStaticFolder = function (fileSystemPath: string, serverPath: string, opts?: Partial<staticyServer.AddFolderOptions>) {
-        // const options = flattenFolderOpts(opts);
         this.addTransformedFolder(fileSystemPath, serverPath, data => data, opts);
     };
 
     middleware.addStaticFile = function (fileSystemPath: string, serverPath: string) {
-        console.log(`Add file watch for ${fileSystemPath}`);
         singleFileWatcher.add(fileSystemPath);
         
         if (serverFileList.some(e => e.serverPath === serverPath)) {
@@ -140,55 +136,63 @@ function staticyServer(globalOptions?: Partial<staticyServer.GlobalOptions>) {
 
     middleware.addTransformedFolder = function (fileSystemPath: string, serverPath: string, transform: (content: string, fileName: string) => (string | Promise<string>), opts?: Partial<staticyServer.AddFolderOptions>) {
         const options = flattenFolderOpts(opts);
+        const patterns = Array.isArray(options.filePattern) ? options.filePattern : [options.filePattern];
         const folderWatcher = chokidar.watch(fileSystemPath, { ...watchOpts, depth: options.recursive ? 10 : 0 });
+        const myFileEntries: ServerPathEntry[] = [];
+
         folderWatcher.on("all", (event: string, path: string) => {
             triggerFileChanged(event, path);
         });
         folderWatcher.on("add", () => {
             recomputeFolderContents();
         });
+        recomputeFolderContents();
 
         function recomputeFolderContents() {
+            fs.readdir(fileSystemPath, (err, fileList) => {
+                if (err) throw err;
 
-        }
-
-        const patterns = Array.isArray(options.filePattern) ? options.filePattern : [options.filePattern];
-
-        fs.readdir(fileSystemPath, (err, fileList) => {
-            if (err) throw err;
-
-            for (const fileName of fileList) {
-                if (patterns.some(p => minimatch(fileName, p))) {
-                    const fullDiskPath = path.join(fileSystemPath, fileName);
-                    const relativeDiskPath = path.relative(fileSystemPath, fullDiskPath);
-                    let fullServerPath = path.join(serverPath, relativeDiskPath);
-                    const extension = path.extname(fullDiskPath);
-                    if (options.extensionMap[extension]) {
-                        fullServerPath = fullServerPath.substr(0, fullServerPath.length - extension.length) + options.extensionMap[extension];
-                    }
-                    const mimeType = globalOpts.mimeTypeProvider(options.extensionMap[extension] || extension);
-                    serverFileList.push({
-                        serverPath: fullServerPath,
-                        mimeType,
-                        description: `Transformed file ${path.relative(process.cwd(), fullDiskPath)}`,
-                        sourceFiles: [fullDiskPath],
-                        generate: async () => {
-                            const content = await fs.readFile(fullDiskPath, { encoding: "utf-8" });
-                            const transformedContent = await transform(content as string, fileName);
-                            return transformedContent;
-                        }
-                    })
+                for (const old of myFileEntries) {
+                    const index = serverFileList.indexOf(old);
+                    if (index < 0) throw new Error("My old file should have been in this list");
+                    serverFileList.splice(index, 1);
                 }
-            }
-        });
+
+                for (const fileName of fileList) {
+                    if (patterns.some(p => minimatch(fileName, p))) {
+                        const fullDiskPath = path.join(fileSystemPath, fileName);
+                        const relativeDiskPath = path.relative(fileSystemPath, fullDiskPath);
+                        let fullServerPath = path.join(serverPath, relativeDiskPath);
+                        const extension = path.extname(fullDiskPath);
+                        if (options.extensionMap[extension]) {
+                            fullServerPath = fullServerPath.substr(0, fullServerPath.length - extension.length) + options.extensionMap[extension];
+                        }
+                        const mimeType = globalOpts.mimeTypeProvider(options.extensionMap[extension] || extension);
+                        const newEntry: ServerPathEntry = {
+                            serverPath: fullServerPath,
+                            mimeType,
+                            description: `Transformed file ${path.relative(process.cwd(), fullDiskPath)}`,
+                            sourceFiles: [fullDiskPath],
+                            generate: async () => {
+                                const content = await fs.readFile(fullDiskPath, { encoding: "utf-8" });
+                                const transformedContent = await transform(content as string, fileName);
+                                return transformedContent;
+                            }
+                        };
+                        myFileEntries.push(newEntry);
+                        serverFileList.push(newEntry);
+                    }
+                }
+            });
+        }
     };
 
     middleware.addTransformedFile = function (fileSystemPath: string, serverPath: string, transform: (context: staticyServer.FileGenerationContext) => string, filePattern?: string) {
-
+        throw new Error("Not implemented yet");
     };
 
     middleware.addGeneratedFile = function (serverPath: string, generate: (context: staticyServer.GenerationContext) => string) {
-
+        throw new Error("Not implemented yet");
     };
 
     middleware.ls = function() {
@@ -196,7 +200,7 @@ function staticyServer(globalOptions?: Partial<staticyServer.GlobalOptions>) {
         for (const f of serverFileList) {
             console.log(`http://site${f.serverPath} - ${f.description} - served as ${f.mimeType}`);
             for (const sf of f.sourceFiles) {
-                console.log(` - Source file ${sf}`);
+                console.log(` - Derived from file ${sf}`);
             }
         }
         console.log(`== (end) ==`);
@@ -204,7 +208,7 @@ function staticyServer(globalOptions?: Partial<staticyServer.GlobalOptions>) {
 
     const listeners: ws[] = [];
     let serverStarted = false;
-    function startReloadServer() {
+    function startReloadServerIfNeeded() {
         if (serverStarted) return;
         serverStarted = true;
 
@@ -223,7 +227,7 @@ function staticyServer(globalOptions?: Partial<staticyServer.GlobalOptions>) {
     function triggerFileChanged(event: string | symbol, rawPath: string) {
         if (typeof event === "symbol" || event === "ready") return;
 
-        const normalizedPath = path.normalize(rawPath);
+        const normalizedPath = normalizePath(rawPath);
         console.log(`Path ${normalizedPath} changed (${event}); triggering reloads`);
         for (const url of filePathToServerPaths(normalizedPath)) {
             // console.log(` -> ${url}`);
@@ -245,8 +249,13 @@ function normalizeSlashes(s: string) {
     return s.replace(/\\/g, "/");
 }
 
+function normalizePath(s: string) {
+    return path.normalize(s).replace(/\\/g, "/");
+}
+
 namespace staticyServer {
     export interface GlobalOptions {
+        trace: boolean;
         disableLiveReload: boolean;
         mimeTypeProvider: (fileName: string) => string;
     }
