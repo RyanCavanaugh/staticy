@@ -167,6 +167,7 @@ function staticyServer(globalOptions?: Partial<staticyServer.GlobalOptions>) {
                         if (options.extensionMap[extension]) {
                             fullServerPath = fullServerPath.substr(0, fullServerPath.length - extension.length) + options.extensionMap[extension];
                         }
+                        fullServerPath = encodeNormalizedPathComponents(fullServerPath);
                         const mimeType = globalOpts.mimeTypeProvider(options.extensionMap[extension] || extension);
                         const newEntry: ServerPathEntry = {
                             serverPath: fullServerPath,
@@ -251,6 +252,10 @@ function normalizeSlashes(s: string) {
 
 function normalizePath(s: string) {
     return path.normalize(s).replace(/\\/g, "/");
+}
+
+function encodeNormalizedPathComponents(path: string): string {
+    return path.split("/").map(s => encodeURIComponent(s)).join("/");
 }
 
 namespace staticyServer {
