@@ -109,7 +109,7 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
                     return;
                 }
             }
-            
+
             const resp = await safeRunGenerate(file, memoizeGetInvalidationForFile(file.serverPath));
 
             if (resp.kind === "error") {
@@ -124,14 +124,21 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
                     res.contentType(path.extname(req.path));
                 }
 
-                 if (resp.kind === "text") {
-                     res.send(await resp.getText());
-                 } else if (resp.kind === "raw") {
+                if (resp.kind === "text") {
+                    const isHtml = (resp.mimeType === "text/html") || (path.extname(req.path) === ".html");
+                    if (isHtml) {
+                        const originalText = await resp.getText();
+                        const newText = injectReloadScript(originalText);
+                        res.send(newText);
+                    } else {
+                        res.send(await resp.getText());
+                    }
+                } else if (resp.kind === "raw") {
                     res.send(await resp.getBuffer());
-                 } else {
-                     assertNever(resp, "Unknown server file response kind");
-                 }
-                 res.end();
+                } else {
+                    assertNever(resp, "Unknown server file response kind");
+                }
+                res.end();
             }
         }
     }
@@ -139,4 +146,8 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
     return {
         run
     };
+}
+
+export function injectReloadScript(htmlContent: string): string {
+    return htmlContent.replace("</body>", `<script src="/__staticy-reload.js"></script></body>`);
 }
