@@ -4,6 +4,7 @@
   "description": "",
   "main": "lib/index.js",
   "scripts": {
+    "test": "jest",
     "build": "tsc",
     "build-test": "tsc -b test-server",
     "start-test-server": "tsc -b test-server && node test-server/server.js"
@@ -33,10 +34,12 @@
     "@types/chokidar": "^1.7.5",
     "@types/express": "^4.16.0",
     "@types/glob": "^7.1.1",
+    "@types/jest": "^23.3.13",
     "@types/mime-types": "^2.1.0",
     "@types/minimatch": "^3.0.3",
     "@types/node": "^10.11.0",
     "@types/ws": "^6.0.1",
+    "jest": "^24.0.0",
     "typescript": "^3.2.0-dev.20181002"
   }
 }
