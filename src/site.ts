@@ -25,7 +25,7 @@ export function createSite() {
 
     }
 
-    async function ls() {
+    async function ls(): Promise<ReadonlyArray<ServerFile>> {
         const allFiles: ServerFile[] = [];
         for (const prov of providers) {
             allFiles.push(...await prov.getServerFiles());
@@ -33,55 +33,50 @@ export function createSite() {
         
         allFiles.sort((a, b) => cmp(a.serverPath, b.serverPath));
 
-        for (const file of allFiles) {
-            if (file.description !== undefined) {
-                console.log(`${file.serverPath} - ${file.description}`);
-            } else {
-                console.log(file.serverPath);
-            }
+        return allFiles;
+    }
+
+    async function getFileByServerPath(serverPath: string): Promise<ServerFile | undefined> {
+        const allFiles: ServerFile[] = [];
+        for (const prov of providers) {
+            allFiles.push(...await prov.getServerFiles());
+        }
+
+        const matching = allFiles.filter(f => {
+            return f.serverPath === serverPath;
+        });
+
+        if (matching.length === 1) {
+            return matching[0];
+        } else if (matching.length === 0) {
+            return undefined;
+        } else {
+            return {
+                serverPath,
+                async generate() {
+                    return {
+                        kind: "error",
+                        mimeType: "text/html",
+                        async getErrorMessage() {
+                            return `More than one provider matched ${serverPath}: ${matching.map(m => m.description || ("???")).join("\r\n")}`;
+                        }
+                    }
+                }
+            };
         }
     }
 
     async function runDevServer(opts: DevelopmentServerOptions = {}) {
         const server = createDevelopmentServer(opts);
-        server.run(async serverPath => {
-            const allFiles: ServerFile[] = [];
-            for (const prov of providers) {
-                allFiles.push(...await prov.getServerFiles());
-            }
-
-            const matching = allFiles.filter(f => {
-                return f.serverPath === serverPath;
-            });
-
-            if (matching.length === 1) {
-                return matching[0];
-            } else {
-                return {
-                    serverPath,
-                    async generate() {
-                        return {
-                            kind: "error",
-                            mimeType: "text/plain",
-                            async getErrorMessage() {
-                                return `More than one provider matched ${serverPath}: ${matching.map(m => m.description || ("???")).join("\r\n")}`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    function handleRequest() {
-
+        server.run(self);
     }
 
     const self = {
         addFileProvider,
         publish,
         runDevServer,
-        ls
+        ls,
+        getFileByServerPath
     };
     return self;
 }

@@ -13,6 +13,7 @@ site.addFileProvider({
             resolve([
                 {
                     serverPath: "/index.html",
+                    description: "Main HTML page",
                     generate(change) {
                         setTimeout(change, 5000);
                         return new Promise(resolve => {
@@ -38,7 +39,7 @@ site.addFileProvider({
                         setTimeout(() => {
                             colors.unshift(colors.pop());
                             change();
-                        }, 500);
+                        }, 1000);
                         return new Promise(resolve => {
                             resolve({
                                 kind: "text",

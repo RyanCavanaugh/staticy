@@ -8,12 +8,36 @@ import { isHtmlFile } from "./utils";
 
 const watchToken = {};
 
+export function staticTextContent(content: string, serverPath: string, mimeType?: string): FileProvider {
+    const file: ServerFile = {
+        serverPath,
+        description: "static content",
+        async generate() {
+            return {
+                kind: "text",
+                mimeType,
+                async getText() {
+                    return content;
+                }
+            }
+        }
+    };
+    const files = [file];
+    return {
+        async getServerFiles() {
+            return files;
+        }
+    };
+}
+
 export function staticFile(localFilePath: string, serverPath: string): FileProvider {
     const file: ServerFile = {
         serverPath,
         description: `from ${path.relative(process.cwd(), localFilePath)}`,
         async generate(invalidate) {
-            updateWatchOfFile(localFilePath, watchToken, invalidate);
+            if (invalidate) {
+                updateWatchOfFile(localFilePath, watchToken, invalidate);
+            }
             if (isHtmlFile(localFilePath)) {
                 return {
                     kind: "text",

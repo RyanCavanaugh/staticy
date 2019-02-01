@@ -39,14 +39,17 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
         directoryIndexNames = ["index.html"]
     } = opts;
     const listeners: ws[] = [];
-    const invalidationLookup: any = {};
+    const invalidationLookup: any = Object.create(null);
     const ws_port = 7772;
+    const serverPathAliases: any = Object.create(null);
     let serverStarted = false;
-
 
     function memoizeGetInvalidationForFile(serverPath: string) {
         return invalidationLookup[serverPath] || (invalidationLookup[serverPath] = () => {
             broadcastUrlChanged(serverPath);
+            if (serverPathAliases[serverPath]) {
+                broadcastUrlChanged(serverPathAliases[serverPath]);
+            }
         });
     }
 
@@ -73,7 +76,7 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
         });
     }
 
-    async function run(getServerFile: (serverPath: string) => Promise<ServerFile>) {
+    async function run(site: Site) {
         startReloadServerIfNeeded();
 
         const server = express();
@@ -92,19 +95,27 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
                 return;
             }
 
-            let file = await getServerFile(req.path);
+            let file = await site.getFileByServerPath(req.path);
+            let resolvedPath = req.path;
             if (file === undefined) {
                 const candidates: string[] = [req.path];
                 for (const name of directoryIndexNames) {
                     const candidate = unixPath.join(req.path, name);
-                    file = await getServerFile(candidate);
-                    if (file !== undefined) break;
+                    file = await site.getFileByServerPath(candidate);
+                    resolvedPath = candidate;
+                    if (file !== undefined) {
+                        serverPathAliases[resolvedPath] = req.path;
+                        break;
+                    }
                     candidates.push(candidate);
                 }
 
                 if (file === undefined) {
                     res.status(404);
-                    res.send(`<html><head><title>404 Resource Not Found</title></head><body>Searched for <pre>${candidates.join("\r\n")}</pre> but did not find <tt>${req.path}</tt>.</body></html>`);
+                    res.contentType("text/html");
+                    const ls = await site.ls();
+                    const listing = ls.map(file => `<a href=${file.serverPath}>${file.serverPath}</a>${file.description ? ` - ${file.description}` : ""}`).join("\r\n");
+                    res.send(`<html><head><title>404 Resource Not Found</title></head><body><h1>404 Resource Not Found</h1>Searched for <pre>${candidates.join("\r\n")}</pre> but did not find <tt>${req.path}</tt>.<hr>File listing:<pre>${listing}</pre></body></html>`);
                     res.end();
                     return;
                 }
@@ -115,17 +126,18 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
             if (resp.kind === "error") {
                 const errText = await resp.getErrorMessage();
                 res.status(500);
+                res.contentType("text/html");
                 res.send(`<html><head><title>Staticy 500</title></head><body><pre>${errText}</pre></body></html>`);
                 res.end();
             } else {
                 if (resp.mimeType !== undefined) {
                     res.contentType(resp.mimeType);
                 } else {
-                    res.contentType(path.extname(req.path));
+                    res.contentType(path.extname(resolvedPath));
                 }
 
                 if (resp.kind === "text") {
-                    const isHtml = (resp.mimeType === "text/html") || (path.extname(req.path) === ".html");
+                    const isHtml = (resp.mimeType === "text/html") || (path.extname(resolvedPath) === ".html");
                     if (isHtml) {
                         const originalText = await resp.getText();
                         const newText = injectReloadScript(originalText);

@@ -9,6 +9,10 @@
     "build-test": "tsc -b test-server",
     "start-test-server": "tsc -b test-server && node test-server/server.js"
   },
+  "jest": {
+    "verbose": true,
+    "roots": ["./lib"]
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/RyanCavanaugh/staticy.git"

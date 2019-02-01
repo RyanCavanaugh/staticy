@@ -15,7 +15,7 @@ export default interface ServerFile {
      * If any dependent assets have changed, the file may call 'invalidate'
      * to trigger a client refresh.
      */
-    generate(invalidate: () => void): Promise<ServerFileResponse>;
+    generate(invalidate?: () => void): Promise<ServerFileResponse>;
 }
 
 export type ServerFileResponse =
