@@ -67,10 +67,8 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
         const wss = new ws.Server({ port: ws_port });
         console.log(`Reload server listening on ${ws_port}`);
         wss.on("connection", function (conn) {
-            console.log("Accepted a listener connection");
             listeners.push(conn);
             conn.on("close", function (closed) {
-                console.log("Closed a listener connection");
                 listeners.splice(listeners.indexOf(conn), 1);
             });
         });
@@ -82,6 +80,7 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
         const server = express();
         server.use(middleware);
         server.listen(port);
+        console.log(`Web server running at http://localhost:${port}/`);
 
         const reloadScript = await fs.readFile(path.join(__dirname, "__staticy-reload.js"), { encoding: "utf-8" })
 

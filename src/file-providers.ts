@@ -8,6 +8,17 @@ import { isHtmlFile } from "./utils";
 
 const watchToken = {};
 
+export type FolderOptions = {
+    filePattern?: string | string[];
+}
+export function staticFolder(localFolderPath: string, serverPath: string, folderOptions?: FolderOptions): FileProvider {
+    return {
+        async getServerFiles() {
+            
+        }
+    };
+}
+
 export function staticTextContent(content: string, serverPath: string, mimeType?: string): FileProvider {
     const file: ServerFile = {
         serverPath,
