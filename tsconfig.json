@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+      "baseUrl": ".",
+      "paths": { "*": ["types/*"] },
     "target": "es6",
     "module": "commonjs",
     "declaration": true,
@@ -12,6 +14,7 @@
     "esModuleInterop": true
   },
   "include": [
-    "src/*.ts"
+    "src/*.ts",
+    "src/beta/*.ts"
   ]
 }
