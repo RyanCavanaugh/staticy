@@ -2,9 +2,10 @@ import fs = require("fs-extra");
 import process = require("process");
 import path = require("path");
 import FileProvider from "./file-provider";
-import ServerFile from "./server-file";
+import ServerFile, { ServerFileResponse } from "./server-file";
 import { updateWatchOfFile } from "./shared-watcher";
 import { isHtmlFile } from "./utils";
+import diffmap from "./diffmap";
 
 const watchToken = {};
 
@@ -12,9 +13,21 @@ export type FolderOptions = {
     filePattern?: string | string[];
 }
 export function staticFolder(localFolderPath: string, serverPath: string, folderOptions?: FolderOptions): FileProvider {
+    const map = diffmap<ServerFile>({
+        create(relativeLocalPath) {
+            return {
+                serverPath: path.join(serverPath, relativeLocalPath),
+                async generate(invalidate) {
+                    return createStaticFileResponse(path.join(localFolderPath, relativeLocalPath), invalidate);
+                }
+            }
+        }
+    });
     return {
         async getServerFiles() {
-            
+            const dir = await fs.readdir(localFolderPath);
+            map.update(dir);
+            return map.contents;
         }
     };
 }
@@ -46,24 +59,7 @@ export function staticFile(localFilePath: string, serverPath: string): FileProvi
         serverPath,
         description: `from ${path.relative(process.cwd(), localFilePath)}`,
         async generate(invalidate) {
-            if (invalidate) {
-                updateWatchOfFile(localFilePath, watchToken, invalidate);
-            }
-            if (isHtmlFile(localFilePath)) {
-                return {
-                    kind: "text",
-                    async getText() {
-                        return fs.readFile(localFilePath, "utf-8");
-                    }
-                };
-            } else {
-                return {
-                    kind: "raw",
-                    getBuffer() {
-                        return fs.readFile(localFilePath);
-                    }
-                };
-            }
+            return createStaticFileResponse(localFilePath, invalidate);
         }
     };
     const files = [file];
@@ -75,3 +71,23 @@ export function staticFile(localFilePath: string, serverPath: string): FileProvi
     };
 }
 
+function createStaticFileResponse(localFilePath: string, invalidate: undefined | (() => void)): ServerFileResponse {
+    if (invalidate) {
+        updateWatchOfFile(localFilePath, watchToken, invalidate);
+    }
+    if (isHtmlFile(localFilePath)) {
+        return {
+            kind: "text",
+            async getText() {
+                return fs.readFile(localFilePath, "utf-8");
+            }
+        };
+    } else {
+        return {
+            kind: "raw",
+            getBuffer() {
+                return fs.readFile(localFilePath);
+            }
+        };
+    }
+}
