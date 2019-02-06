@@ -10,9 +10,10 @@ import diffmap from "./diffmap";
 const watchToken = {};
 
 export type FolderOptions = {
+    recursive?: boolean;
     filePattern?: string | string[];
 }
-/*
+
 export function staticFolder(localFolderPath: string, serverPath: string, folderOptions?: FolderOptions): FileProvider {
     const map = diffmap<ServerFile>({
         create(relativeLocalPath) {
@@ -21,7 +22,7 @@ export function staticFolder(localFolderPath: string, serverPath: string, folder
                 async generate(invalidate) {
                     return createStaticFileResponse(path.join(localFolderPath, relativeLocalPath), invalidate);
                 }
-            }
+            };
         }
     });
     return {
@@ -32,7 +33,7 @@ export function staticFolder(localFolderPath: string, serverPath: string, folder
         }
     };
 }
-*/
+
 export function staticTextContent(content: string, serverPath: string, mimeType?: string): FileProvider {
     const file: ServerFile = {
         serverPath,

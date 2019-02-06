@@ -2,7 +2,9 @@ import fs = require("fs-extra");
 import path = require("path");
 import ts = require("typescript");
 import rollup = require("rollup");
+import resolve = require("rollup-plugin-node-resolve");
 import virtual = require("rollup-plugin-virtual");
+import cjs = require("rollup-plugin-commonjs");
 import FileProvider from "../file-provider";
 import ServerFile from "../server-file";
 
@@ -17,7 +19,6 @@ export function createTypeScriptBundle(tsconfigPath: string, entryPoint: string,
                 getCurrentDirectory: ts.sys.getCurrentDirectory,
                 readDirectory: ts.sys.readDirectory,
                 readFile: ts.sys.readFile,
-                trace: () => undefined,
                 useCaseSensitiveFileNames: true,
                 onUnRecoverableConfigFileDiagnostic(diag) {
                     console.error(diag.messageText);
@@ -27,7 +28,6 @@ export function createTypeScriptBundle(tsconfigPath: string, entryPoint: string,
             const cfg = ts.getParsedCommandLineOfConfigFile(tsconfigPath, {}, host)!;
             const customOpts: ts.CompilerOptions = { ...cfg.options, noEmit: false, skipLibCheck: true, sourceMap: false };
             console.log(`TypeScript program startup in ${Date.now() - start}`);
-
 
             start = Date.now();
             const filesMap: any = Object.create(null);
@@ -48,7 +48,13 @@ export function createTypeScriptBundle(tsconfigPath: string, entryPoint: string,
                 mimeType: "text/javascript",
                 async getText() {
                     const input: rollup.InputOptions = {
-                        plugins: [virtual(filesMap)],
+                        plugins: [virtual(filesMap),
+                            resolve({
+                                browser: true,
+                                extensions: [".js", ".jsx", ".json"],
+                                preferBuiltins: false
+                            }),
+                            cjs],
                         input: entryPoint,
                         ...rollupInputOptions
                     };
