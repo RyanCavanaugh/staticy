@@ -3,17 +3,31 @@ const path = require("path");
 const ts = require("typescript");
 const rollup = require("rollup");
 const virtual = require("rollup-plugin-virtual");
+const nodeResolve = require("rollup-plugin-node-resolve");
 
+const disklessPrefix = " virtual";
 async function fn1() {
     const filesMap = Object.create(null);
-    filesMap["app.js"] = "import * as foo from \"./foo.js\";\nfoo.bar();";
+    filesMap["app.js"] = "import * as foo from \"./foo\";\nfoo.bar();";
     filesMap["foo.js"] = "import * as r from 'react'; import * as rd from 'react-dom'; export function bar() { r.thing.blah(); rd.bar.q(); return 10; }";
     const rollupInput = await rollup.rollup({
-        plugins: [virtual(filesMap)],
+        plugins: [
+            virtual(filesMap),
+            nodeResolve(),
+            { resolveId(importee, importer) {
+                if(importer && importer.startsWith(disklessPrefix)) {
+                    let virtual = path.resolve(referenceDir, importer);
+                    return resolver.resolveId(importee, virtual);
+                }
+            
+                return importee.startsWith(disklessPrefix) ? importee : null;
+            } }],
         input: "app.js",
-        external: ["react", "react_dom"]
+        external: ["react", "react_dom"],
     });
-    const rollupOutput = await rollupInput.generate({ format: "umd", ...{ globals: {"react": "React", "react-dom": "ReactDOM"} }}, );
+    const rollupOutput = await rollupInput.generate({
+        format: "umd",
+        ...{ globals: {"react": "React", "react-dom": "ReactDOM"} }}, );
     console.log(`Produced ${rollupOutput.output.length} outputs`);
     console.log(`Returning code for ${rollupOutput.output[0].fileName}`);
     console.log(rollupOutput.output[0].code);
@@ -72,6 +86,7 @@ async function fn(tsconfigPath, entryPoint, serverPath, rollupInputOptions, roll
 }
 
 
+/*
 fn("D:/github/scales/tsconfig.json", "app.js", "/js/app.js", {
     input: "app.js",
     external: ["react", "react-dom"]
@@ -81,5 +96,5 @@ fn("D:/github/scales/tsconfig.json", "app.js", "/js/app.js", {
 }).catch(e => {
     console.log(e);
 });
-
-// fn1().then();
+*/
+fn1().then();

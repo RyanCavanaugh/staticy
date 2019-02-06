@@ -31,7 +31,7 @@ export function createTypeScriptBundle(tsconfigPath: string, entryPoint: string,
 
             start = Date.now();
             const filesMap: any = Object.create(null);
-            const compilerOptions = { sourceMap: false, jsx: ts.JsxEmit.React, module: ts.ModuleKind.ESNext };
+            const compilerOptions = { sourceMap: false, jsx: ts.JsxEmit.React, module: ts.ModuleKind.ES2015 };
             for (const inFile of cfg.fileNames) {
                 if (/\.tsx?$/.test(inFile) && !/\.d\.ts/.test(inFile)) {
                     const outputRelativeName = path.relative(cfg.options.rootDir || path.dirname(tsconfigPath), inFile);
@@ -42,6 +42,7 @@ export function createTypeScriptBundle(tsconfigPath: string, entryPoint: string,
                     filesMap[outputFinalName] = ts.transpileModule(inputText, { fileName: inFile, compilerOptions }).outputText;
                 }
             }
+            debugger;
             console.log(`TypeScript emit in ${Date.now() - start}`);
             return {
                 kind: "text",
@@ -53,8 +54,7 @@ export function createTypeScriptBundle(tsconfigPath: string, entryPoint: string,
                                 browser: true,
                                 extensions: [".js", ".jsx", ".json"],
                                 preferBuiltins: false
-                            }),
-                            cjs],
+                            })],
                         input: entryPoint,
                         ...rollupInputOptions
                     };
