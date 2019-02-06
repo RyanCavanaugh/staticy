@@ -1,3 +1,15 @@
+import * as fileProviders from "./file-providers";
+import * as site from "./site";
+
+import * as typescriptRollupBundle from "./beta/typescript-rollup-bundle";
+
+export {
+    fileProviders,
+    site,
+    typescriptRollupBundle
+};
+
+/*
 import express = require('express');
 import _path = require('path');
 import fs = require('fs-extra');
@@ -289,3 +301,4 @@ namespace staticyServer {
 }
 
 export = staticyServer;
+*/

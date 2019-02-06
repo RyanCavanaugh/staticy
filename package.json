@@ -11,7 +11,9 @@
   },
   "jest": {
     "verbose": true,
-    "roots": ["./lib"]
+    "roots": [
+      "./lib"
+    ]
   },
   "repository": {
     "type": "git",
@@ -32,6 +34,8 @@
     "mime-types": "^2.1.20",
     "minimatch": "^3.0.4",
     "npm": "^6.4.1",
+    "rollup": "^1.1.2",
+    "rollup-plugin-virtual": "^1.0.1",
     "ws": "^6.0.0"
   },
   "devDependencies": {
@@ -44,6 +48,6 @@
     "@types/node": "^10.11.0",
     "@types/ws": "^6.0.1",
     "jest": "^24.0.0",
-    "typescript": "^3.2.0-dev.20181002"
+    "typescript": "^3.3.1"
   }
 }
