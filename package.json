@@ -5,6 +5,7 @@
   "main": "lib/index.js",
   "scripts": {
     "test": "jest",
+    "prepublish": "npm run build",
     "build": "tsc",
     "build-test": "tsc -b test-server",
     "start-test-server": "tsc -b test-server && node test-server/server.js"
