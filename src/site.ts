@@ -10,12 +10,36 @@ import glob = require('glob');
 import FileProvider from './file-provider';
 import { DevelopmentServerOptions, createDevelopmentServer } from './dev-server';
 import ServerFile from './server-file';
-import { cmp } from './utils';
+import { cmp, getPathComponents } from './utils';
+import { DirectoryOptions, createDirectoryProvider } from './directory-file-provider';
 
 export type Site = ReturnType<typeof createSite>;
 
-export function createSite() {
+export type SiteOptions = {
+    fileRoot: string;
+};
+
+const DefaultSiteOptions: SiteOptions = {
+    fileRoot: process.mainModule ? _path.dirname(process.mainModule.filename) : __dirname
+};
+
+export function createSite(siteOptions?: Partial<SiteOptions>) {
     const providers: FileProvider[] = [];
+
+    const { fileRoot } = {...DefaultSiteOptions, ...siteOptions};
+    
+    
+    /** Convencience APIs */
+    function addDirectory(localDirectoryPath: string, options?: Partial<DirectoryOptions>) {
+        const { path: localPath, pattern } = getPathComponents(localDirectoryPath);
+        const serverPath = _path.relative(fileRoot, localPath);
+        providers.push(createDirectoryProvider({
+            localPath,
+            pattern,
+            serverPath,
+            ...options
+        }));
+    }
 
     function addFileProvider(provider: FileProvider) {
         providers.push(provider);
@@ -72,13 +96,15 @@ export function createSite() {
     }
 
     const self = {
+        addDirectory,
+
+        getFileByServerPath,
+
         addFileProvider,
         publish,
         runDevServer,
-        ls,
-        getFileByServerPath
+        ls
     };
+
     return self;
 }
-
-

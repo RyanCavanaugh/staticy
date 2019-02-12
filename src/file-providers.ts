@@ -73,7 +73,7 @@ export function staticFile(localFilePath: string, serverPath: string): FileProvi
     };
 }
 
-function createStaticFileResponse(localFilePath: string, invalidate: undefined | (() => void)): ServerFileResponse {
+export function createStaticFileResponse(localFilePath: string, invalidate: undefined | (() => void)): ServerFileResponse {
     if (invalidate) {
         updateWatchOfFile(localFilePath, watchToken, invalidate);
     }

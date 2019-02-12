@@ -1,9 +1,20 @@
 import path = require('path');
 
+export type PromiseOrImmediate<T> = T | Promise<T>;
+
 export function cmp(a: string, b: string) {
     return a === b ? 0 :
         a > b ? -1 :
         1;
+}
+
+export function getPathComponents(pathMaybeWithWildcards: string) {
+    const lastPart = path.basename(pathMaybeWithWildcards);
+    if (lastPart.indexOf("*") >= 0) {
+        return { path: path.dirname(pathMaybeWithWildcards), pattern: lastPart };
+    } else {
+        return { path: pathMaybeWithWildcards, pattern: "*" };
+    }
 }
 
 export function assertNever(value: never, why: string) {
