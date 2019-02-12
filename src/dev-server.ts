@@ -54,7 +54,7 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
     }
 
     function broadcastUrlChanged(serverPath: string) {
-        const event = JSON.stringify({ url: serverPath });
+        const event = JSON.stringify({ url: "/" + serverPath });
         for (const listener of listeners) {
             listener.send(event);
         }

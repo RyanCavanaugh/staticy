@@ -10,7 +10,7 @@ import glob = require('glob');
 import FileProvider from './file-provider';
 import { DevelopmentServerOptions, createDevelopmentServer } from './dev-server';
 import ServerFile from './server-file';
-import { cmp, getPathComponents } from './utils';
+import { cmp, getPathComponents, removeLeadingSlash } from './utils';
 import { DirectoryOptions, createDirectoryProvider } from './directory-file-provider';
 
 export type Site = ReturnType<typeof createSite>;
@@ -67,7 +67,7 @@ export function createSite(siteOptions?: Partial<SiteOptions>) {
         }
 
         const matching = allFiles.filter(f => {
-            return f.serverPath === serverPath;
+            return removeLeadingSlash(f.serverPath) === removeLeadingSlash(serverPath);
         });
 
         if (matching.length === 1) {

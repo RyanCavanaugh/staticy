@@ -5,7 +5,14 @@ export type PromiseOrImmediate<T> = T | Promise<T>;
 export function cmp(a: string, b: string) {
     return a === b ? 0 :
         a > b ? -1 :
-        1;
+            1;
+}
+
+export function dirAndBase(filePath: string) {
+    return {
+        dir: path.dirname(filePath),
+        base: path.basename(filePath)
+    };
 }
 
 export function getPathComponents(pathMaybeWithWildcards: string) {
@@ -33,4 +40,8 @@ export function changeExtension(fileName: string, oldExtension: string, newExten
 export function fileHasExtension(fileName: string, ext: string) {
     const fileExt = path.extname(fileName);
     return (ext === fileExt) || (("." + ext) === fileExt);
+}
+
+export function removeLeadingSlash(s: string) {
+    return s[0] === '/' ? s.substr(1) : s;
 }

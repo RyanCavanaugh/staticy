@@ -7,8 +7,8 @@ async function getAndGenerate(site: Site, serverPath: string) {
 
 test("Site returns a file", async () => {
     const site = createSite();
-    site.addFileProvider(staticTextContent("hello world", "/file1.txt"));
-    const result = await getAndGenerate(site, "/file1.txt");
+    site.addFileProvider(staticTextContent("hello world", "file1.txt"));
+    const result = await getAndGenerate(site, "file1.txt");
     expect(result.kind).toBe("text");
     if (result.kind === "text") {
         const text = await result.getText();
@@ -18,9 +18,9 @@ test("Site returns a file", async () => {
 
 test("Site rejects multiple providers for the same file", async () => {
     const site = createSite();
-    site.addFileProvider(staticTextContent("hello world", "/file1.txt"));
-    site.addFileProvider(staticTextContent("goodbye planet", "/file1.txt"));
-    const result = await getAndGenerate(site, "/file1.txt");
+    site.addFileProvider(staticTextContent("hello world", "file1.txt"));
+    site.addFileProvider(staticTextContent("goodbye planet", "file1.txt"));
+    const result = await getAndGenerate(site, "file1.txt");
     expect(result.kind).toBe("error");
 });
 
