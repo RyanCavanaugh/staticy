@@ -11,6 +11,15 @@ export function assertNever(value: never, why: string) {
 }
 
 export function isHtmlFile(filePath: string) {
-    const ext = path.extname(filePath);
-    return (ext === ".html") || (ext === ".htm");
+    return fileHasExtension(filePath, ".html") || fileHasExtension(filePath, ".htm");
+}
+
+export function changeExtension(fileName: string, oldExtension: string, newExtension: string) {
+    // TODO make smarter
+    return fileName.replace(oldExtension, newExtension);
+}
+
+export function fileHasExtension(fileName: string, ext: string) {
+    const fileExt = path.extname(fileName);
+    return (ext === fileExt) || (("." + ext) === fileExt);
 }

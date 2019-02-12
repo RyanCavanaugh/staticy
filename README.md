@@ -25,8 +25,6 @@ For example, the *client file* might be a `.less` file which is transformed into
 While there is often a one-to-one correspondence between server and client files, this isn't always the case.
 This documentation will always disambiguate between *server files* and *local fils*.
 
-
-
 # Server Configuration
 
 Because `staticy` doesn't know how your HTTP server is configured, you may need to inform it of certain configuration details.
@@ -44,6 +42,9 @@ HTTP servers must send correct [MIME types](https://developer.mozilla.org/en-US/
 By default, `staticy` will send a MIME type corresponding to the file extension of the server file, or `text/plain` if the file extension isn't a recognized one.
 
 TODO: How is this otherwise configured?
+
+# Simple Transforms
+
 
 
 # Details for Implementors
