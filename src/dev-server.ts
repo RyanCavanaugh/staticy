@@ -1,3 +1,4 @@
+import child_process = require('child_process');
 import express = require('express');
 import path = require('path');
 import fs = require('fs-extra');
@@ -80,7 +81,20 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
         const server = express();
         server.use(middleware);
         server.listen(port);
+
+        process.stdin.setRawMode!(true);
+        process.stdin.on("data", (key) => {
+            // Ctrl-C, q, Esc            
+            if (key[0] === 3 || key[0] === 113 || key[0] === 27) {
+                process.exit();
+            }
+            console.log(JSON.stringify(key));
+        });
+
         console.log(`Web server running at http://localhost:${port}/`);
+        console.log(`Exit with 'q' or 'Esc'`);
+
+        process.stdin.resume();
 
         const reloadScript = await fs.readFile(path.join(__dirname, "__staticy-reload.js"), { encoding: "utf-8" })
 
