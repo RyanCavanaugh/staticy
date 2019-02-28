@@ -10,7 +10,7 @@ import string_decoder = require('string_decoder');
 import glob = require('glob');
 import FileProvider from './file-provider';
 import { Site } from './site';
-import ServerFile, { ServerFileResponse } from './server-file';
+import ServerFile, { ServerFileResponse, GenerationContext } from './server-file';
 import { assertNever } from './utils';
 
 const unixPath = path.posix;
@@ -20,9 +20,9 @@ export interface DevelopmentServerOptions {
     directoryIndexNames?: ReadonlyArray<string>;
 }
 
-async function safeRunGenerate(file: ServerFile, invalidate: () => void): Promise<ServerFileResponse> {
+async function safeRunGenerate(file: ServerFile, context: GenerationContext): Promise<ServerFileResponse> {
     try {
-        return await file.generate(invalidate);
+        return await file.generate(context);
     } catch (e) {
         return {
             kind: "error",
@@ -134,7 +134,15 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
                 }
             }
 
-            const resp = await safeRunGenerate(file, memoizeGetInvalidationForFile(file.serverPath));
+            const invalidate = memoizeGetInvalidationForFile(file.serverPath);
+            const context: GenerationContext = {
+                invalidate,
+                issueWarning(err) {
+                    console.warn(`Warning when generating ${file!.serverPath}: ${err}`);
+                }
+            };
+
+            const resp = await safeRunGenerate(file, context);
 
             if (resp.kind === "error") {
                 const errText = await resp.getErrorMessage();

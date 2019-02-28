@@ -2,7 +2,7 @@ import fs = require("fs-extra");
 import process = require("process");
 import path = require("path");
 import FileProvider from "./file-provider";
-import ServerFile, { ServerFileResponse } from "./server-file";
+import ServerFile, { ServerFileResponse, GenerationContext } from "./server-file";
 import { updateWatchOfFile } from "./shared-watcher";
 import { isHtmlFile } from "./utils";
 import diffmap from "./diffmap";
@@ -19,8 +19,8 @@ export function staticFolder(localFolderPath: string, serverPath: string, folder
         create(relativeLocalPath) {
             return {
                 serverPath: path.join(serverPath, relativeLocalPath),
-                async generate(invalidate) {
-                    return createStaticFileResponse(path.join(localFolderPath, relativeLocalPath), invalidate);
+                async generate(context) {
+                    return createStaticFileResponse(path.join(localFolderPath, relativeLocalPath), context);
                 }
             };
         }
@@ -73,9 +73,9 @@ export function staticFile(localFilePath: string, serverPath: string): FileProvi
     };
 }
 
-export function createStaticFileResponse(localFilePath: string, invalidate: undefined | (() => void)): ServerFileResponse {
-    if (invalidate) {
-        updateWatchOfFile(localFilePath, watchToken, invalidate);
+export function createStaticFileResponse(localFilePath: string, context: GenerationContext): ServerFileResponse {
+    if (context.invalidate) {
+        updateWatchOfFile(localFilePath, watchToken, context.invalidate);
     }
     if (isHtmlFile(localFilePath)) {
         return {

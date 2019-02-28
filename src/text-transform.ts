@@ -6,6 +6,7 @@ export type TextTransform = {
 };
 
 export type TextTransformContext = {
+    issueWarning(text: string): void;
     invalidate(): void;
     content: string;
     fileName: string;

@@ -1,8 +1,10 @@
 import { createSite, Site } from "./site";
 import { staticTextContent } from "./file-providers";
 
+function noop() { }
+
 async function getAndGenerate(site: Site, serverPath: string) {
-    return await (await site.getFileByServerPath(serverPath))!.generate();
+    return await (await site.getFileByServerPath(serverPath))!.generate({ issueWarning: noop });
 }
 
 test("Site returns a file", async () => {

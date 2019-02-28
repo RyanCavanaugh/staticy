@@ -40,23 +40,24 @@ export function createDirectoryProvider(options: DirectoryOptions): FileProvider
             }
             return {
                 serverPath: relativeServerPath,
-                async generate(invalidate = noop) {
+                async generate(serverFileContext) {
                     if (textTransformer) {
                         return {
                             kind: "text",
                             async getText() {
                                 const context: TextTransformContext = {
-                                    invalidate,
+                                    issueWarning: serverFileContext.issueWarning,
+                                    invalidate: serverFileContext.invalidate || noop,
                                     content: await fs.readFile(filePath, "utf-8"),
                                     fileName: path.basename(filePath)
                                 };
-                                updateWatchOfFile(filePath, token, invalidate);
+                                updateWatchOfFile(filePath, token, context.invalidate);
                                 const result = await textTransformer.transform(context);
                                 return result.content;
                             }
                         };
                     } else {
-                        return createStaticFileResponse(filePath, invalidate);
+                        return createStaticFileResponse(filePath, serverFileContext);
                     }
                 }
             };
