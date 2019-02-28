@@ -88,7 +88,6 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
             if (key[0] === 3 || key[0] === 113 || key[0] === 27) {
                 process.exit();
             }
-            console.log(JSON.stringify(key));
         });
 
         console.log(`Web server running at http://localhost:${port}/`);
