@@ -42,7 +42,6 @@ export function createTypeScriptBundle(tsconfigPath: string, entryPoint: string,
                     filesMap[outputFinalName] = ts.transpileModule(inputText, { fileName: inFile, compilerOptions }).outputText;
                 }
             }
-            debugger;
             console.log(`TypeScript emit in ${Date.now() - start}`);
             return {
                 kind: "text",

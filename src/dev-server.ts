@@ -126,7 +126,7 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
                     res.status(404);
                     res.contentType("text/html");
                     const ls = await site.ls();
-                    const listing = ls.map(file => `<a href=${file.serverPath}>${file.serverPath}</a>${file.description ? ` - ${file.description}` : ""}`).join("\r\n");
+                    const listing = ls.map(file => `<a href="/${file.serverPath}">${file.serverPath}</a>${file.description ? ` - ${file.description}` : ""}`).join("\r\n");
                     res.send(`<html><head><title>404 Resource Not Found</title></head><body><h1>404 Resource Not Found</h1>Searched for <pre>${candidates.join("\r\n")}</pre> but did not find <tt>${req.path}</tt>.<hr>File listing:<pre>${listing}</pre></body></html>`);
                     res.end();
                     return;
