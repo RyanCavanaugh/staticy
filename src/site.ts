@@ -10,7 +10,7 @@ import glob = require('glob');
 import FileProvider from './file-provider';
 import { DevelopmentServerOptions, createDevelopmentServer } from './dev-server';
 import ServerFile from './server-file';
-import { cmp, getPathComponents, removeLeadingSlash } from './utils';
+import { cmp, getPathComponents, removeLeadingSlash, assertNever } from './utils';
 import { DirectoryOptions, createDirectoryProvider } from './directory-file-provider';
 
 export type Site = ReturnType<typeof createSite>;
@@ -19,6 +19,16 @@ export type SiteOptions = {
     fileRoot: string;
 };
 
+export type Warning = {
+    serverPath: string;
+    message: string;
+};
+
+export type PublishResult = {
+    warnings: Warning[];
+    errors: Warning[];
+}
+
 const DefaultSiteOptions: SiteOptions = {
     fileRoot: process.mainModule ? _path.dirname(process.mainModule.filename) : __dirname
 };
@@ -26,9 +36,9 @@ const DefaultSiteOptions: SiteOptions = {
 export function createSite(siteOptions?: Partial<SiteOptions>) {
     const providers: FileProvider[] = [];
 
-    const { fileRoot } = {...DefaultSiteOptions, ...siteOptions};
-    
-    
+    const { fileRoot } = { ...DefaultSiteOptions, ...siteOptions };
+
+
     /** Convencience APIs */
     function addDirectory(localDirectoryPath: string, options?: Partial<DirectoryOptions>) {
         const { path: localPath, pattern } = getPathComponents(localDirectoryPath);
@@ -45,7 +55,39 @@ export function createSite(siteOptions?: Partial<SiteOptions>) {
         providers.push(provider);
     }
 
-    async function publish(diskRootPath: string) {
+
+    async function publish(diskRootPath: string): Promise<PublishResult> {
+        const warnings: Warning[] = [];
+        const errors: Warning[] = [];
+        await fs.mkdirp(diskRootPath);
+
+        const files = await ls();
+        for (const file of files) {
+            const localPath = _path.join(diskRootPath, removeLeadingSlash(file.serverPath));
+            await fs.mkdirp(_path.dirname(localPath));
+            const content = await file.generate({ issueWarning: message => warnings.push({ message, serverPath: file.serverPath }) });
+            switch (content.kind) {
+                case "text":
+                    await fs.writeFile(localPath, await content.getText(), { encoding: "utf-8" });
+                    break;
+
+                case "raw":
+                    await fs.writeFile(localPath, await content.getBuffer());
+                    break;
+
+                case "error":
+                    errors.push({ message: await content.getErrorMessage(), serverPath: file.serverPath });
+                    break;
+
+                default:
+                    assertNever(content, "Unexpected content kind");
+            }
+        }
+
+        return {
+            warnings,
+            errors
+        };
 
     }
 
@@ -54,8 +96,8 @@ export function createSite(siteOptions?: Partial<SiteOptions>) {
         for (const prov of providers) {
             allFiles.push(...await prov.getServerFiles());
         }
-        
-        allFiles.sort((a, b) => cmp(a.serverPath, b.serverPath));
+
+        allFiles.sort((a, b) => cmp(b.serverPath, a.serverPath));
 
         return allFiles;
     }
