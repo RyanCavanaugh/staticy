@@ -38,7 +38,6 @@ export function createSite(siteOptions?: Partial<SiteOptions>) {
 
     const { fileRoot } = { ...DefaultSiteOptions, ...siteOptions };
 
-
     /** Convencience APIs */
     function addDirectory(localDirectoryPath: string, options?: Partial<DirectoryOptions>) {
         const { path: localPath, pattern } = getPathComponents(localDirectoryPath);
@@ -54,7 +53,6 @@ export function createSite(siteOptions?: Partial<SiteOptions>) {
     function addFileProvider(provider: FileProvider) {
         providers.push(provider);
     }
-
 
     async function publish(diskRootPath: string): Promise<PublishResult> {
         const warnings: Warning[] = [];
@@ -88,7 +86,6 @@ export function createSite(siteOptions?: Partial<SiteOptions>) {
             warnings,
             errors
         };
-
     }
 
     async function ls(): Promise<ReadonlyArray<ServerFile>> {
