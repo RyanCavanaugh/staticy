@@ -49,7 +49,8 @@ export function createDirectoryProvider(options: DirectoryOptions): FileProvider
                                     issueWarning: serverFileContext.issueWarning,
                                     invalidate: serverFileContext.invalidate || noop,
                                     content: await fs.readFile(filePath, "utf-8"),
-                                    fileName: path.basename(filePath)
+                                    fileName: path.basename(filePath),
+                                    serverPath: relativeServerPath
                                 };
                                 updateWatchOfFile(filePath, token, context.invalidate);
                                 const result = await textTransformer.transform(context);

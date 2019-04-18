@@ -38,6 +38,7 @@
     "mime-types": "^2.1.20",
     "minimatch": "^3.0.4",
     "npm": "^6.4.1",
+    "open": "^6.0.0",
     "rollup": "^1.1.2",
     "rollup-plugin-commonjs": "^9.2.0",
     "rollup-plugin-node-resolve": "^4.0.0",
@@ -53,6 +54,7 @@
     "@types/mime-types": "^2.1.0",
     "@types/minimatch": "^3.0.3",
     "@types/node": "^10.11.0",
+    "@types/open": "^6.0.0",
     "@types/ws": "^6.0.1",
     "jest": "^24.0.0",
     "typescript": "^3.3.1"

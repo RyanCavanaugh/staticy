@@ -1,4 +1,5 @@
 import child_process = require('child_process');
+import open = require('open');
 import express = require('express');
 import path = require('path');
 import fs = require('fs-extra');
@@ -66,7 +67,6 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
         serverStarted = true;
 
         const wss = new ws.Server({ port: ws_port });
-        console.log(`Reload server listening on ${ws_port}`);
         wss.on("connection", function (conn) {
             listeners.push(conn);
             conn.on("close", function (closed) {
@@ -82,16 +82,21 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
         server.use(middleware);
         server.listen(port);
 
+        const url = `http://localhost:${port}/`;
+
         process.stdin.setRawMode!(true);
         process.stdin.on("data", (key) => {
             // Ctrl-C, q, Esc            
             if (key[0] === 3 || key[0] === 113 || key[0] === 27) {
                 process.exit();
+            } else if (key[0] === "l".charCodeAt(0)) {
+                open(url);
             }
         });
 
-        console.log(`Web server running at http://localhost:${port}/`);
-        console.log(`Exit with 'q' or 'Esc'`);
+        console.log(`Web server running at ${url}`);
+        console.log(` Q / Esc   Exit`);
+        console.log(` L         Launch Browser`);
 
         process.stdin.resume();
 

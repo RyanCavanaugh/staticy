@@ -10,6 +10,7 @@ export type TextTransformContext = {
     invalidate(): void;
     content: string;
     fileName: string;
+    serverPath: string;
 };
 
 export type TextTransformResult = {
