@@ -4,3 +4,4 @@ lib/**/*.d.ts
 lib/**/*.map
 !lib/__staticy-reload.js
 test_server/bin
+tsconfig.tsbuildinfo
