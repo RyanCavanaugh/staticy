@@ -1,12 +1,5 @@
-import express = require('express');
 import _path = require('path');
 import fs = require('fs-extra');
-import minimatch = require('minimatch');
-import mime = require('mime-types');
-import ws = require('ws');
-import chokidar = require('chokidar');
-import string_decoder = require('string_decoder');
-import glob = require('glob');
 import FileProvider from './file-provider';
 import { DevelopmentServerOptions, createDevelopmentServer } from './dev-server';
 import ServerFile from './server-file';

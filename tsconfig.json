@@ -11,7 +11,8 @@
     "outDir": "lib",
     "composite": true,
     "strict": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "skipLibCheck": true
   },
   "include": [
     "src/*.ts",

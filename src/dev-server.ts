@@ -1,15 +1,8 @@
-import child_process = require('child_process');
 import open = require('open');
 import express = require('express');
 import path = require('path');
 import fs = require('fs-extra');
-import minimatch = require('minimatch');
-import mime = require('mime-types');
 import ws = require('ws');
-import chokidar = require('chokidar');
-import string_decoder = require('string_decoder');
-import glob = require('glob');
-import FileProvider from './file-provider';
 import { Site } from './site';
 import ServerFile, { ServerFileResponse, GenerationContext } from './server-file';
 import { assertNever } from './utils';
@@ -69,7 +62,7 @@ export function createDevelopmentServer(opts: DevelopmentServerOptions) {
         const wss = new ws.Server({ port: ws_port });
         wss.on("connection", function (conn) {
             listeners.push(conn);
-            conn.on("close", function (closed) {
+            conn.on("close", function () {
                 listeners.splice(listeners.indexOf(conn), 1);
             });
         });

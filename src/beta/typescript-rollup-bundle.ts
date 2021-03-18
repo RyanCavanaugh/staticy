@@ -1,3 +1,4 @@
+/*
 import fs = require("fs-extra");
 import path = require("path");
 import ts = require("typescript");
@@ -76,3 +77,5 @@ export function createTypeScriptBundle(tsconfigPath: string, entryPoint: string,
         }
     };
 }
+
+*/

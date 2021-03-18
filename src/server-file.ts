@@ -19,7 +19,15 @@ export default interface ServerFile {
 }
 
 export interface GenerationContext {
+    /**
+     * If provided, this is a callback that should be invoked whenever the provided file
+     * would change content. For example, if providing a file from disk, you should call
+     * invalidate whenever the file on disk has changed
+     */
     invalidate?(): void;
+    /**
+     * If something goes wrong, you can write a warning message to the dev server console
+     */
     issueWarning(text: string): void;
 }
 
@@ -30,7 +38,7 @@ export type ServerFileResponse =
 
 export interface BaseServerFileResponse {
     /**
-     * 
+     * MIME type to use. If not provided, this will be inferred from the file extension
      */
     mimeType?: string;
 }

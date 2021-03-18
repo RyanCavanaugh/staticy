@@ -1,17 +1,24 @@
+/*!
+ * Provides a set of convenient built-in file providers
+ */
+
 import fs = require("fs-extra");
 import process = require("process");
 import path = require("path");
+import diffmap from "./diffmap";
 import FileProvider from "./file-provider";
-import ServerFile, { ServerFileResponse, GenerationContext } from "./server-file";
+import ServerFile, { GenerationContext, ServerFileResponse } from "./server-file";
 import { updateWatchOfFile } from "./shared-watcher";
 import { isHtmlFile } from "./utils";
-import diffmap from "./diffmap";
 
 const watchToken = {};
 
 export type FolderOptions = {
-    recursive?: boolean;
-    filePattern?: string | string[];
+    // Not Implemented Yet
+    // filePattern?: string | string[];
+
+    // Not Implemented Yet
+    // recursive?: boolean
 }
 
 export function staticFolder(localFolderPath: string, serverPath: string, folderOptions?: FolderOptions): FileProvider {
@@ -34,6 +41,12 @@ export function staticFolder(localFolderPath: string, serverPath: string, folder
     };
 }
 
+/**
+ * Serve a static string as a file
+ * @param content The content to serve
+ * @param serverPath Where on the server the file should exist
+ * @param mimeType (optional) MIME type to report. If unspecified, is inferred from the file extension
+ */
 export function staticTextContent(content: string, serverPath: string, mimeType?: string): FileProvider {
     const file: ServerFile = {
         serverPath,

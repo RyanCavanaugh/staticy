@@ -24,7 +24,7 @@ export function getPathComponents(pathMaybeWithWildcards: string) {
     }
 }
 
-export function assertNever(value: never, why: string) {
+export function assertNever(value: never, why: string): never {
     throw new Error(why);
 }
 
